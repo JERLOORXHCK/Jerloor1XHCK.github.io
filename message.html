@@ -20,7 +20,7 @@ a{display:block;text-decoration:none;text-align:center;margin:24px auto 4px;padd
 .fx-toast.show{opacity:1;transform:translateX(-50%)}
 .fx-glitch{animation:glitch .18s steps(2,end) 2}@keyframes glitch{0%{transform:translate(0)}25%{transform:translate(2px,-1px)}50%{transform:translate(-2px,1px)}75%{transform:translate(1px,0)}100%{transform:translate(0)}}
 </style>
-</head><body><main class="box"><div class="top"><img class="logo" src="jerloorxhck.png"><h1>JERLOOR<span>XHCK</span></h1></div><div class="line"></div><div id="msg" class="msg"></div><div class="sig">— MESSAGE FROM JERLOORXHCK —</div><a href="https://wa.me/message/OOJJZKO6ZLTYL1" target="_blank" rel="noopener">💬 CONTACT JERLOORXHCK ON WHATSAPP</a><div id="error"></div></main>
+</head><body><main class="box"><div class="top"><img class="logo" src="jerloorxhck.png"><h1>JERLOOR<span>XHCK</span></h1></div><div class="line"></div><div id="msg" class="msg"></div><div class="sig">— MESSAGE FROM JERLOORXHCK —</div><a href="https://wa.me/2347070783758" target="_blank" rel="noopener">💬 CONTACT JERLOORXHCK ON WHATSAPP</a><div id="error"></div></main>
 <script>
 (function(){
  const noise=document.createElement("div");noise.id="fx-noise";
@@ -68,14 +68,8 @@ a{display:block;text-decoration:none;text-align:center;margin:24px auto 4px;padd
   }
 
   try {
-    if (!location.hash.startsWith("#data=")) {
+    if (!location.hash.startsWith("#id=")) {
       showError("MESSAGE LINK INVALID — RETURN TO THE ENCRYPTED LINK");
-      return;
-    }
-
-    const raw = location.hash.slice(6).split("&")[0];
-    if (!raw) {
-      showError("MESSAGE LINK INVALID — NO ENCRYPTED PAYLOAD");
       return;
     }
 
@@ -101,21 +95,12 @@ a{display:block;text-decoration:none;text-align:center;margin:24px auto 4px;padd
     jlxFX.success();
     jlxFX.flash();
     jlxFX.toast("MESSAGE DECRYPTED");
+    msgEl.textContent = text;
+    requestAnimationFrame(() => {
+      msgEl.scrollIntoView({block:"center", behavior:"instant"});
+    });
+    tone(880, .1);
 
-    // Type the complete message into the visible message area.
-    let i = 0;
-    function typeMessage(){
-      if (i < text.length) {
-        msgEl.textContent += text[i++];
-        setTimeout(typeMessage, text[i - 1] === "\n" ? 150 : 28);
-      } else {
-        tone(880, .1);
-      }
-    }
-    typeMessage();
-
-    // Keep only the decrypted payload for this browser tab/session.
-    // It is not included in the URL and disappears when the session ends.
     sessionStorage.removeItem("pendingKey");
 
     if (payload.expiresAt) {
@@ -132,13 +117,11 @@ a{display:block;text-decoration:none;text-align:center;margin:24px auto 4px;padd
           sessionStorage.removeItem("pendingPayload");
           return;
         }
-
         const total = Math.floor(left / 1000);
         const d = Math.floor(total / 86400);
         const h = Math.floor((total % 86400) / 3600);
         const m = Math.floor((total % 3600) / 60);
         const sec = total % 60;
-
         note.textContent =
           "AUTO-EXPIRES IN: " +
           (d ? d + "d " : "") +
@@ -146,7 +129,6 @@ a{display:block;text-decoration:none;text-align:center;margin:24px auto 4px;padd
           String(m).padStart(2, "0") + ":" +
           String(sec).padStart(2, "0");
       }
-
       countdown();
       setInterval(countdown, 1000);
     }

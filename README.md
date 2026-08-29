@@ -10,7 +10,7 @@
 7. The recipient opens the link, enters the password, and the complete message opens.
 
 ## Security
-The share link contains only the encrypted payload. The password is not included in the URL. AES-256-GCM protects the message and PBKDF2-SHA-256 derives the encryption key with 250,000 iterations.
+The share link contains only the encrypted payload. The password is never included in the URL, including query parameters or hash fragments. AES-256-GCM protects the message and PBKDF2-SHA-256 derives the encryption key with 250,000 iterations.
 
 ## Expiry
 The encrypted payload contains an expiration timestamp. The browser blocks display after expiry and shows a countdown while the message is open.
@@ -45,3 +45,13 @@ The Create page now evaluates the password as **Weak, Medium, Strong, or Very St
 - Password generation and encryption completion sounds
 
 Audio starts after browser interaction where required by mobile autoplay policies.
+
+## WhatsApp Contact
+The message page contact button opens the owner's WhatsApp number: +234 707 078 3758.
+
+
+## Supabase backend
+Run `supabase.sql` in the Supabase SQL Editor before publishing the site.
+The website uses the Supabase publishable key in `supabase-config.js`.
+The password is never stored in Supabase and never appears in the URL.
+Only encrypted ciphertext is stored in the `secret_messages` table.
