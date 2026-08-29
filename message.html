@@ -52,54 +52,122 @@ a{display:block;text-decoration:none;text-align:center;margin:24px auto 4px;padd
 })();
 </script>
 <script>
-function b64u(s){return s.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-s.length%4)%4)}
-function ub64(s){const b=atob(b64u(s));return Uint8Array.from(b,c=>c.charCodeAt(0))}
-async function decrypt(password){
- const raw=location.hash.slice(6),bytes=ub64(raw),salt=bytes.slice(0,16),iv=bytes.slice(16,28),ct=bytes.slice(28);
- const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
- const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
- const p=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct);return JSON.parse(new TextDecoder().decode(p))
-}
-(async()=>{
- try{
-  const key=sessionStorage.getItem("pendingKey");
-  const payload=JSON.parse(sessionStorage.getItem("pendingPayload")||"null");
-  if(!key||!payload||!location.hash.startsWith("#data=")) throw 0;
-  if(payload.expiresAt && Date.now()>=payload.expiresAt) throw 0;
-  // The password is kept only in sessionStorage and is NEVER placed in the URL.
-  const text=payload.message||"";
-  jlxFX.success(); jlxFX.flash(); jlxFX.toast("MESSAGE DECRYPTED");
-  const el=document.getElementById("msg"); let i=0;
-  (function type(){
-    if(i<text.length){
-      el.textContent+=text[i++];
-      setTimeout(type,text[i-1]=="
-"?150:28);
-    } else tone(880,.1);
-  })();
-  if(payload.expiresAt){
-    const note=document.createElement("div");
-    note.style.cssText="text-align:center;color:#7da85b;font:10px monospace;margin-top:15px";
-    document.querySelector(".sig").after(note);
-    function countdown(){
-      const left=payload.expiresAt-Date.now();
-      if(left<=0){location.href="index.html#expired";return}
-      const secTotal=Math.floor(left/1000),d=Math.floor(secTotal/86400),
-            h=Math.floor(secTotal%86400/3600),m=Math.floor(secTotal%3600/60),sec=secTotal%60;
-      note.textContent="AUTO-EXPIRES IN: "+(d?d+"d ":"")+
-        (h?String(h).padStart(2,"0")+":":"")+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0");
-    }
-    countdown(); setInterval(countdown,1000);
-  }
-  sessionStorage.removeItem("pendingKey");
-  sessionStorage.removeItem("pendingPayload");
- }catch{
-  document.getElementById("error").textContent="MESSAGE SESSION INVALID — RETURN TO THE ENCRYPTED LINK";
- }
-})();
+/*
+  JERLOORXHCK message viewer
+  The password is NEVER placed in the URL.
+  index.html decrypts the payload and stores the decrypted payload
+  temporarily in sessionStorage before opening this page.
+*/
+(function(){
+  const errorEl = document.getElementById("error");
+  const msgEl = document.getElementById("msg");
 
-if(payload.expiresAt){const note=document.createElement("div");note.style.cssText="text-align:center;color:#7da85b;font:10px monospace;margin-top:15px";document.querySelector(".sig").after(note);
-function countdown(){const left=payload.expiresAt-Date.now();if(left<=0){location.href="index.html#expired";return}const s=Math.floor(left/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),sec=s%60;note.textContent="AUTO-EXPIRES IN: "+(d?d+"d ":"")+(h?String(h).padStart(2,"0")+":":"")+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0")}countdown();setInterval(countdown,1000)}sessionStorage.removeItem("pendingKey");}catch{document.getElementById("error").textContent="MESSAGE SESSION INVALID — RETURN TO THE ENCRYPTED LINK"}})();
-function tone(f,d){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;const a=new A(),o=a.createOscillator(),g=a.createGain();o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}
+  function showError(text){
+    errorEl.textContent = text;
+    msgEl.textContent = "";
+  }
+
+  try {
+    if (!location.hash.startsWith("#data=")) {
+      showError("MESSAGE LINK INVALID — RETURN TO THE ENCRYPTED LINK");
+      return;
+    }
+
+    const raw = location.hash.slice(6).split("&")[0];
+    if (!raw) {
+      showError("MESSAGE LINK INVALID — NO ENCRYPTED PAYLOAD");
+      return;
+    }
+
+    const stored = sessionStorage.getItem("pendingPayload");
+    if (!stored) {
+      showError("MESSAGE SESSION EXPIRED — RETURN TO THE ENCRYPTED LINK");
+      return;
+    }
+
+    const payload = JSON.parse(stored);
+    if (!payload || typeof payload.message !== "string") {
+      throw new Error("INVALID_PAYLOAD");
+    }
+
+    if (payload.expiresAt && Date.now() >= Number(payload.expiresAt)) {
+      showError("MESSAGE EXPIRED — ACCESS BLOCKED");
+      sessionStorage.removeItem("pendingPayload");
+      sessionStorage.removeItem("pendingKey");
+      return;
+    }
+
+    const text = payload.message;
+    jlxFX.success();
+    jlxFX.flash();
+    jlxFX.toast("MESSAGE DECRYPTED");
+
+    // Type the complete message into the visible message area.
+    let i = 0;
+    function typeMessage(){
+      if (i < text.length) {
+        msgEl.textContent += text[i++];
+        setTimeout(typeMessage, text[i - 1] === "\n" ? 150 : 28);
+      } else {
+        tone(880, .1);
+      }
+    }
+    typeMessage();
+
+    // Keep only the decrypted payload for this browser tab/session.
+    // It is not included in the URL and disappears when the session ends.
+    sessionStorage.removeItem("pendingKey");
+
+    if (payload.expiresAt) {
+      const note = document.createElement("div");
+      note.style.cssText =
+        "text-align:center;color:#7da85b;font:10px monospace;margin-top:15px";
+      document.querySelector(".sig").after(note);
+
+      function countdown(){
+        const left = Number(payload.expiresAt) - Date.now();
+        if (left <= 0) {
+          note.textContent = "MESSAGE EXPIRED";
+          msgEl.textContent = "";
+          sessionStorage.removeItem("pendingPayload");
+          return;
+        }
+
+        const total = Math.floor(left / 1000);
+        const d = Math.floor(total / 86400);
+        const h = Math.floor((total % 86400) / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const sec = total % 60;
+
+        note.textContent =
+          "AUTO-EXPIRES IN: " +
+          (d ? d + "d " : "") +
+          (h ? String(h).padStart(2, "0") + ":" : "") +
+          String(m).padStart(2, "0") + ":" +
+          String(sec).padStart(2, "0");
+      }
+
+      countdown();
+      setInterval(countdown, 1000);
+    }
+
+  } catch (err) {
+    console.error(err);
+    showError("MESSAGE SESSION INVALID — RETURN TO THE ENCRYPTED LINK");
+  }
+})();
+</script>
+<script>
+function tone(f,d){
+  const A=window.AudioContext||window.webkitAudioContext;
+  if(!A)return;
+  const a=new A(),o=a.createOscillator(),g=a.createGain();
+  o.frequency.value=f;
+  g.gain.value=.04;
+  o.connect(g);
+  g.connect(a.destination);
+  o.start();
+  o.stop(a.currentTime+d);
+}
 </script>
 </body></html>
