@@ -28,12 +28,12 @@ button{width:100%;margin-top:12px;padding:14px;border:0;border-radius:11px;backg
 </select>
 <button id="gen">🔐 ENCRYPT & GENERATE SHARE LINK</button>
 <section id="result">
-<label>SECRET KEY — SEND THIS SEPARATELY</label><pre id="outkey"></pre>
-<label>ENCRYPTED SHARE LINK</label><pre id="outlink"></pre>
+<label>SECRET KEY</label><pre id="outkey"></pre>
+<label>INSTANT SHARE LINK — OPENING THIS LINK WILL SHOW THE MESSAGE</label><pre id="outlink"></pre>
 <label>EXPIRATION</label><pre id="outexp"></pre>
 <button id="copyLink">COPY SHARE LINK</button><button id="copyKey">COPY SECRET KEY</button>
 </section>
-<p class="warning">AES-256-GCM + PBKDF2-SHA-256 (250,000 iterations). The expiration timestamp is encrypted and authenticated with the message. The key never goes into the URL.</p>
+<p class="warning">AES-256-GCM + PBKDF2-SHA-256 (250,000 iterations). The generated link contains the decryption key in the URL fragment so the recipient can open the message immediately. Anyone who has the complete link can read the message.</p>
 <p class="warning">Static-site limitation: expiration is enforced by the recipient's browser clock. For server-enforced deletion that cannot be bypassed by changing the clock, use a backend.</p>
 </main>
 <script>
@@ -54,7 +54,7 @@ async function make(){
  const btn=document.getElementById("gen");btn.disabled=true;btn.textContent="ENCRYPTING...";
  try{
   const payload=await encrypt({message:m,expiresAt,createdAt:Date.now()},k);
-  const link=location.origin+location.pathname.replace(/create\.html$/,"index.html")+"#data="+payload;
+  const link=location.origin+location.pathname.replace(/create\.html$/,"index.html")+"#data="+payload+"&key="+encodeURIComponent(k);
   document.getElementById("outkey").textContent=k;
   document.getElementById("outlink").textContent=link;
   document.getElementById("outexp").textContent=expiresAt?new Date(expiresAt).toLocaleString():"Never";

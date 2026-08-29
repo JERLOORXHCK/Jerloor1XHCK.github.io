@@ -31,8 +31,8 @@ button{width:100%;padding:14px;margin-top:10px;border:0;border-radius:11px;backg
 <span>&gt; AES-GCM authentication: <b class="ok">READY</b></span><br>
 <span>&gt; message status: <b class="ok">LOCKED</b></span>
 </div>
-<input id="key" type="password" placeholder="ENTER SECRET KEY" autocomplete="off">
-<button id="unlock">⚡ DECRYPT MESSAGE</button>
+<input id="key" type="password" placeholder="ENTER SECRET KEY (OPTIONAL)" autocomplete="off">
+<button id="unlock">⚡ OPEN MESSAGE</button>
 <div id="error"></div>
 <a id="create" href="create.html">CREATE A NEW SECRET MESSAGE →</a>
 <div class="foot">FROM JERLOORXHCK • END-TO-END CLIENT-SIDE ENCRYPTION</div>
@@ -47,7 +47,7 @@ function tone(freq,dur,delay=0){setTimeout(()=>{const A=window.AudioContext||win
 function b64u(s){return s.replace(/-/g,"+").replace(/_/g,"/")+ "=".repeat((4-s.length%4)%4)}
 function ub64(s){const bin=atob(b64u(s));return Uint8Array.from(bin,c=>c.charCodeAt(0))}
 async function decryptMessage(password){
- const raw=location.hash.startsWith("#data=")?location.hash.slice(6):"";
+ const raw=location.hash.startsWith("#data=")?location.hash.slice(6).split("&key=")[0]:"";
  if(!raw)throw Error("NO_PAYLOAD");
  const bytes=ub64(raw),salt=bytes.slice(0,16),iv=bytes.slice(16,28),ct=bytes.slice(28);
  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
@@ -56,18 +56,25 @@ async function decryptMessage(password){
  return JSON.parse(new TextDecoder().decode(plain));
 }
 async function unlock(){
- const e=document.getElementById("error"),key=document.getElementById("key").value;
+ const e=document.getElementById("error");
+ let key=document.getElementById("key").value;
+ const m=location.hash.match(/&key=([^&]*)/);
+ if(!key && m) try{key=decodeURIComponent(m[1])}catch{}
  if(!location.hash.startsWith("#data=")){e.textContent="> NO ENCRYPTED MESSAGE IN THIS LINK";return}
- if(!key){e.textContent="> ENTER YOUR SECRET KEY";return}
+ if(!key){e.textContent="> ENTER THE SECRET KEY";return}
  try{
- const payload=await decryptMessage(key);
- if(payload.expiresAt && Date.now()>=payload.expiresAt){
-   tone(150,.18);e.style.color="#ff5555";e.textContent="> MESSAGE EXPIRED — ACCESS PERMANENTLY BLOCKED";return;
- }
- tone(660,.08);tone(880,.12,100);e.style.color="#9cff00";e.textContent="> ACCESS GRANTED — AUTHENTICATING...";
- sessionStorage.setItem("pendingKey",key);
- setTimeout(()=>location.href="message.html",500)
-}catch{tone(150,.15);e.style.color="#ff5555";e.textContent="> ACCESS DENIED — WRONG KEY OR CORRUPTED MESSAGE"}}
+  const payload=await decryptMessage(key);
+  if(payload.expiresAt && Date.now()>=payload.expiresAt){
+   e.style.color="#ff5555";e.textContent="> MESSAGE EXPIRED — ACCESS BLOCKED";return;
+  }
+  tone(660,.08);tone(880,.12,100);e.style.color="#9cff00";e.textContent="> ACCESS GRANTED — OPENING...";
+  sessionStorage.setItem("pendingKey",key);
+  sessionStorage.setItem("pendingPayload",JSON.stringify(payload));
+  setTimeout(()=>location.href="message.html"+location.hash,450);
+ }catch{tone(150,.15);e.style.color="#ff5555";e.textContent="> ACCESS DENIED — INVALID LINK OR KEY"}}
+document.getElementById("unlock").onclick=unlock;
+document.getElementById("key").onkeydown=e=>{if(e.key==="Enter")unlock()};
+(function(){const m=location.hash.match(/&key=([^&]*)/);if(m){try{document.getElementById("key").value=decodeURIComponent(m[1]);unlock()}catch{}}})();
 document.getElementById("unlock").onclick=unlock;
 document.getElementById("key").onkeydown=e=>{if(e.key==="Enter")unlock()};
 </script>

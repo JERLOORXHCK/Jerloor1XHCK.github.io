@@ -21,7 +21,10 @@ async function decrypt(password){
  const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
  const p=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct);return JSON.parse(new TextDecoder().decode(p))
 }
-(async()=>{try{const key=sessionStorage.getItem("pendingKey");if(!key||!location.hash.startsWith("#data="))throw 0;const payload=await decrypt(key);
+(async()=>{try{let key=sessionStorage.getItem("pendingKey");if(!location.hash.startsWith("#data="))throw 0;
+if(!key){const m=location.hash.match(/&key=([^&]*)/);if(m)key=decodeURIComponent(m[1])}
+if(!key)throw 0;
+const payload=JSON.parse(sessionStorage.getItem("pendingPayload")||"null")||await decrypt(key);
 if(payload.expiresAt && Date.now()>=payload.expiresAt)throw 0;
 const text=payload.message;const el=document.getElementById("msg");let i=0;(function type(){if(i<text.length){el.textContent+=text[i++];setTimeout(type,text[i-1]=="\n"?150:28)}else tone(880,.1)})();
 if(payload.expiresAt){const note=document.createElement("div");note.style.cssText="text-align:center;color:#7da85b;font:10px monospace;margin-top:15px";document.querySelector(".sig").after(note);
