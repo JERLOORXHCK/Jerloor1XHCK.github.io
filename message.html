@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JERLOORXHCK • Secret Message</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial;background:#000;color:#eaffdf}
+body{display:flex;align-items:center;justify-content:center;padding:22px;overflow:hidden}
+body:before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 50% 40%,rgba(125,255,0,.13),transparent 40%);z-index:-2}
+.box{width:min(94vw,650px);border:1px solid #82ff00;border-radius:24px;background:rgba(2,8,1,.9);padding:28px 22px;box-shadow:0 0 40px rgba(130,255,0,.2);animation:in .8s ease}@keyframes in{from{opacity:0;transform:translateY(25px) scale(.96)}to{opacity:1;transform:none}}
+.top{text-align:center}.logo{width:105px;height:105px;border-radius:50%;border:1px solid #9cff00;box-shadow:0 0 30px rgba(150,255,0,.4)}
+h1{font-size:28px;letter-spacing:4px;color:white;margin:13px 0}h1 span{color:#9cff00}.line{height:1px;background:linear-gradient(90deg,transparent,#9cff00,transparent);margin:18px 0}
+.msg{min-height:180px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:19px;line-height:1.65;white-space:pre-wrap}.sig{text-align:center;font:11px monospace;color:#9cff00;letter-spacing:2px}
+a{display:block;text-decoration:none;text-align:center;margin:24px auto 4px;padding:15px;border:1px solid #8cff00;border-radius:12px;background:#071205;color:#caff91;font-weight:800;box-shadow:0 0 18px rgba(140,255,0,.15)}
+#error{text-align:center;color:#ff5555;font:11px monospace}
+</style></head><body><main class="box"><div class="top"><img class="logo" src="jerloorxhck.png"><h1>JERLOOR<span>XHCK</span></h1></div><div class="line"></div><div id="msg" class="msg"></div><div class="sig">— MESSAGE FROM JERLOORXHCK —</div><a href="https://wa.me/message/OOJJZKO6ZLTYL1" target="_blank" rel="noopener">💬 CONTACT JERLOORXHCK ON WHATSAPP</a><div id="error"></div></main>
+<script>
+function b64u(s){return s.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-s.length%4)%4)}
+function ub64(s){const b=atob(b64u(s));return Uint8Array.from(b,c=>c.charCodeAt(0))}
+async function decrypt(password){
+ const raw=location.hash.slice(6),bytes=ub64(raw),salt=bytes.slice(0,16),iv=bytes.slice(16,28),ct=bytes.slice(28);
+ const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
+ const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
+ const p=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct);return JSON.parse(new TextDecoder().decode(p))
+}
+(async()=>{try{const key=sessionStorage.getItem("pendingKey");if(!key||!location.hash.startsWith("#data="))throw 0;const payload=await decrypt(key);
+if(payload.expiresAt && Date.now()>=payload.expiresAt)throw 0;
+const text=payload.message;const el=document.getElementById("msg");let i=0;(function type(){if(i<text.length){el.textContent+=text[i++];setTimeout(type,text[i-1]=="\n"?150:28)}else tone(880,.1)})();
+if(payload.expiresAt){const note=document.createElement("div");note.style.cssText="text-align:center;color:#7da85b;font:10px monospace;margin-top:15px";document.querySelector(".sig").after(note);
+function countdown(){const left=payload.expiresAt-Date.now();if(left<=0){location.href="index.html#expired";return}const s=Math.floor(left/1000),d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),sec=s%60;note.textContent="AUTO-EXPIRES IN: "+(d?d+"d ":"")+(h?String(h).padStart(2,"0")+":":"")+String(m).padStart(2,"0")+":"+String(sec).padStart(2,"0")}countdown();setInterval(countdown,1000)}sessionStorage.removeItem("pendingKey");}catch{document.getElementById("error").textContent="MESSAGE SESSION INVALID — RETURN TO THE ENCRYPTED LINK"}})();
+function tone(f,d){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;const a=new A(),o=a.createOscillator(),g=a.createGain();o.frequency.value=f;g.gain.value=.04;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d)}
+</script></body></html>

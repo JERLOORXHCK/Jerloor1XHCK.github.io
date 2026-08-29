@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JERLOORXHCK • Create Secret</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#000;color:#baff72;font-family:Arial}
+body{display:flex;justify-content:center;align-items:center;padding:18px;overflow:auto}
+.box{width:min(94vw,650px);border:1px solid #82ff00;border-radius:22px;background:rgba(1,8,1,.92);padding:25px;box-shadow:0 0 40px rgba(130,255,0,.18)}
+.logo{display:block;width:100px;height:100px;margin:auto;border-radius:50%;border:1px solid #8cff00;box-shadow:0 0 25px rgba(140,255,0,.45)}
+h1{text-align:center;color:white;letter-spacing:4px;font-size:25px}h1 span{color:#9cff00}.hint{text-align:center;font:11px monospace;color:#638f47}
+textarea,input,select{width:100%;margin-top:12px;border:1px solid #355c20;border-radius:11px;background:#020602;color:#fff;padding:14px;outline:0}textarea{min-height:150px;resize:vertical}input{text-align:center;letter-spacing:2px}select{appearance:auto}
+button{width:100%;margin-top:12px;padding:14px;border:0;border-radius:11px;background:#9cff00;color:#061000;font-weight:900;letter-spacing:1px}
+#result{display:none;margin-top:18px;border-top:1px solid #274719;padding-top:18px}label{display:block;margin-top:12px;font:10px monospace;color:#77a45b}pre{white-space:pre-wrap;word-break:break-all;background:#030803;border:1px solid #274719;border-radius:10px;padding:12px;color:#caff9d;font-size:11px}
+.warning{font-size:10px;color:#789c61;text-align:center;margin-top:15px;line-height:1.6}
+</style></head>
+<body><main class="box">
+<img class="logo" src="jerloorxhck.png"><h1>JERLOOR<span>XHCK</span></h1>
+<p class="hint">CREATE AN ENCRYPTED AUTO-EXPIRING MESSAGE</p>
+<textarea id="msg" placeholder="Write your secret message here..."></textarea>
+<input id="key" type="text" placeholder="Choose a strong secret key">
+<select id="expiry">
+<option value="10">Expires in 10 minutes</option>
+<option value="60">Expires in 1 hour</option>
+<option value="1440" selected>Expires in 24 hours</option>
+<option value="10080">Expires in 7 days</option>
+<option value="0">No expiry</option>
+</select>
+<button id="gen">🔐 ENCRYPT & GENERATE SHARE LINK</button>
+<section id="result">
+<label>SECRET KEY — SEND THIS SEPARATELY</label><pre id="outkey"></pre>
+<label>ENCRYPTED SHARE LINK</label><pre id="outlink"></pre>
+<label>EXPIRATION</label><pre id="outexp"></pre>
+<button id="copyLink">COPY SHARE LINK</button><button id="copyKey">COPY SECRET KEY</button>
+</section>
+<p class="warning">AES-256-GCM + PBKDF2-SHA-256 (250,000 iterations). The expiration timestamp is encrypted and authenticated with the message. The key never goes into the URL.</p>
+<p class="warning">Static-site limitation: expiration is enforced by the recipient's browser clock. For server-enforced deletion that cannot be bypassed by changing the clock, use a backend.</p>
+</main>
+<script>
+function b64u(a){let s=btoa(String.fromCharCode(...a));return s.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function randomKey(){const a=new Uint8Array(18);crypto.getRandomValues(a);return b64u(a)}
+async function encrypt(obj,password){
+ const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+ const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
+ const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt"]);
+ const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(JSON.stringify(obj))));
+ const all=new Uint8Array(28+ct.length);all.set(salt,0);all.set(iv,16);all.set(ct,28);return b64u(all)
+}
+async function make(){
+ const m=document.getElementById("msg").value.trim();let k=document.getElementById("key").value.trim();
+ if(!m){alert("Write a message first.");return}if(!k)k=randomKey();
+ const mins=Number(document.getElementById("expiry").value);
+ const expiresAt=mins===0?0:Date.now()+mins*60000;
+ const btn=document.getElementById("gen");btn.disabled=true;btn.textContent="ENCRYPTING...";
+ try{
+  const payload=await encrypt({message:m,expiresAt,createdAt:Date.now()},k);
+  const link=location.origin+location.pathname.replace(/create\.html$/,"index.html")+"#data="+payload;
+  document.getElementById("outkey").textContent=k;
+  document.getElementById("outlink").textContent=link;
+  document.getElementById("outexp").textContent=expiresAt?new Date(expiresAt).toLocaleString():"Never";
+  document.getElementById("result").style.display="block";btn.textContent="✓ ENCRYPTED";
+ }catch(e){console.error(e);btn.textContent="ERROR — TRY AGAIN"}finally{btn.disabled=false}
+}
+document.getElementById("gen").onclick=make;
+async function cp(id){await navigator.clipboard.writeText(document.getElementById(id).textContent);alert("Copied.")}
+document.getElementById("copyLink").onclick=()=>cp("outlink");document.getElementById("copyKey").onclick=()=>cp("outkey");
+</script></body></html>
