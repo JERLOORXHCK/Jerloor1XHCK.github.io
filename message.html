@@ -52,91 +52,18 @@ a{display:block;text-decoration:none;text-align:center;margin:24px auto 4px;padd
 })();
 </script>
 <script>
-/*
-  JERLOORXHCK message viewer
-  The password is NEVER placed in the URL.
-  index.html decrypts the payload and stores the decrypted payload
-  temporarily in sessionStorage before opening this page.
-*/
 (function(){
-  const errorEl = document.getElementById("error");
-  const msgEl = document.getElementById("msg");
-
-  function showError(text){
-    errorEl.textContent = text;
-    msgEl.textContent = "";
-  }
-
-  try {
-    if (!location.hash.startsWith("#id=")) {
-      showError("MESSAGE LINK INVALID — RETURN TO THE ENCRYPTED LINK");
-      return;
-    }
-
-    const stored = sessionStorage.getItem("pendingPayload");
-    if (!stored) {
-      showError("MESSAGE SESSION EXPIRED — RETURN TO THE ENCRYPTED LINK");
-      return;
-    }
-
-    const payload = JSON.parse(stored);
-    if (!payload || typeof payload.message !== "string") {
-      throw new Error("INVALID_PAYLOAD");
-    }
-
-    if (payload.expiresAt && Date.now() >= Number(payload.expiresAt)) {
-      showError("MESSAGE EXPIRED — ACCESS BLOCKED");
-      sessionStorage.removeItem("pendingPayload");
-      sessionStorage.removeItem("pendingKey");
-      return;
-    }
-
-    const text = payload.message;
-    jlxFX.success();
-    jlxFX.flash();
-    jlxFX.toast("MESSAGE DECRYPTED");
-    msgEl.textContent = text;
-    requestAnimationFrame(() => {
-      msgEl.scrollIntoView({block:"center", behavior:"instant"});
-    });
-    tone(880, .1);
-
-    sessionStorage.removeItem("pendingKey");
-
-    if (payload.expiresAt) {
-      const note = document.createElement("div");
-      note.style.cssText =
-        "text-align:center;color:#7da85b;font:10px monospace;margin-top:15px";
-      document.querySelector(".sig").after(note);
-
-      function countdown(){
-        const left = Number(payload.expiresAt) - Date.now();
-        if (left <= 0) {
-          note.textContent = "MESSAGE EXPIRED";
-          msgEl.textContent = "";
-          sessionStorage.removeItem("pendingPayload");
-          return;
-        }
-        const total = Math.floor(left / 1000);
-        const d = Math.floor(total / 86400);
-        const h = Math.floor((total % 86400) / 3600);
-        const m = Math.floor((total % 3600) / 60);
-        const sec = total % 60;
-        note.textContent =
-          "AUTO-EXPIRES IN: " +
-          (d ? d + "d " : "") +
-          (h ? String(h).padStart(2, "0") + ":" : "") +
-          String(m).padStart(2, "0") + ":" +
-          String(sec).padStart(2, "0");
-      }
-      countdown();
-      setInterval(countdown, 1000);
-    }
-
-  } catch (err) {
-    console.error(err);
-    showError("MESSAGE SESSION INVALID — RETURN TO THE ENCRYPTED LINK");
-  }
+ const errorEl=document.getElementById("error"),msgEl=document.getElementById("msg");
+ function showError(t){errorEl.textContent=t;msgEl.textContent=""}
+ try{
+   const id=new URLSearchParams(location.search).get("id");
+   const stored=sessionStorage.getItem("pendingPayload");
+   if(!id||!stored){showError("MESSAGE SESSION EXPIRED — RETURN TO THE ENCRYPTED LINK");return}
+   const payload=JSON.parse(stored);if(!payload||typeof payload.message!=="string")throw Error("INVALID_PAYLOAD");
+   jlxFX.success();jlxFX.flash();jlxFX.toast("MESSAGE DECRYPTED");msgEl.textContent=payload.message;
+   sessionStorage.removeItem("pendingPayload");
+   requestAnimationFrame(()=>msgEl.scrollIntoView({block:"center",behavior:"instant"}));
+ }catch(err){console.error(err);showError("MESSAGE SESSION INVALID — RETURN TO THE ENCRYPTED LINK")}
 })();
 </script>
 <script>

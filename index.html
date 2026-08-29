@@ -53,48 +53,28 @@ const c=document.getElementById("matrix"),x=c.getContext("2d"),font=15;let W,H,c
 function resize(){W=c.width=innerWidth;H=c.height=innerHeight;cols=Math.ceil(W/font);drops=Array(cols).fill(1)}addEventListener("resize",resize);resize();
 const chars="01ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&<>[]{}";
 setInterval(()=>{x.fillStyle="rgba(0,0,0,.075)";x.fillRect(0,0,W,H);x.font=font+"px monospace";for(let i=0;i<drops.length;i++){x.fillStyle=Math.random()>.94?"#d7ff9b":"#54b51d";x.fillText(chars[(Math.random()*chars.length)|0],i*font,drops[i]*font);if(drops[i]*font>H&&Math.random()>.975)drops[i]=0;drops[i]++}},45);
-
-function tone(freq,dur,delay=0){setTimeout(()=>{const A=window.AudioContext||window.webkitAudioContext;if(!A)return;const a=new A(),o=a.createOscillator(),g=a.createGain();o.frequency.value=freq;o.type="sine";g.gain.setValueAtTime(.0001,a.currentTime);g.gain.exponentialRampToValueAtTime(.06,a.currentTime+.02);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+dur);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+dur+.03)},delay)}
-function b64u(s){return s.replace(/-/g,"+").replace(/_/g,"/")+ "=".repeat((4-s.length%4)%4)}
+function b64u(s){return s.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-s.length%4)%4)}
 function ub64(s){const bin=atob(b64u(s));return Uint8Array.from(bin,c=>c.charCodeAt(0))}
-async function decryptMessage(password){
- const raw=location.hash.startsWith("#id=")?decodeURIComponent(location.hash.slice(4).split("&")[0]):"";
- if(!raw)throw Error("NO_ID");
- const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
- const {data,error}=await client.from("secret_messages").select("ciphertext,expires_at").eq("id",raw).single();
- if(error || !data)throw Error("NOT_FOUND");
- const bytes=ub64(data.ciphertext),salt=bytes.slice(0,16),iv=bytes.slice(16,28),ct=bytes.slice(28);
+async function decryptMessage(password,ciphertext){
+ const bytes=ub64(ciphertext),salt=bytes.slice(0,16),iv=bytes.slice(16,28),ct=bytes.slice(28);
  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
  const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["decrypt"]);
- const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct);
- const payload=JSON.parse(new TextDecoder().decode(plain));
- payload.expiresAt=data.expires_at ? new Date(data.expires_at).getTime() : 0;
- return payload;
+ const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct);return JSON.parse(new TextDecoder().decode(plain));
 }
 async function unlock(){
- const e=document.getElementById("error"); jlxFX.click();
- const key=document.getElementById("key").value.trim();
- if(!location.hash.startsWith("#id=")){e.textContent="> NO MESSAGE ID IN THIS LINK";return}
- if(!key){e.textContent="> ENTER THE SECRET PASSWORD";return}
+ const e=document.getElementById("error");jlxFX.click();const key=document.getElementById("key").value.trim();const id=new URLSearchParams(location.search).get("id");
+ if(!id){e.textContent="> NO MESSAGE ID IN THIS LINK";return} if(!key){e.textContent="> ENTER THE SECRET PASSWORD";return}
  try{
-  const payload=await decryptMessage(key);
-  if(payload.expiresAt && Date.now()>=payload.expiresAt){ jlxFX.error();
-   e.style.color="#ff5555";e.textContent="> MESSAGE EXPIRED — ACCESS BLOCKED";return;
-  }
-  tone(660,.08);tone(880,.12,100);jlxFX.success();jlxFX.flash();jlxFX.toast("ACCESS GRANTED");
-  e.style.color="#9cff00";e.textContent="> PASSWORD ACCEPTED — OPENING...";
-  sessionStorage.setItem("pendingKey",key);
-  sessionStorage.setItem("pendingPayload",JSON.stringify(payload));
-  setTimeout(()=>location.href="message.html"+location.hash,450);
- }catch(err){
-  console.error(err);
-  tone(150,.15);jlxFX.error();e.style.color="#ff5555";
-  e.textContent=err.message==="NOT_FOUND"
-    ? "> MESSAGE NOT FOUND OR EXPIRED"
-    : "> ACCESS DENIED — WRONG PASSWORD OR INVALID LINK";
- }}
-document.getElementById("unlock").onclick=unlock;
-document.getElementById("key").onkeydown=e=>{if(e.key==="Enter")unlock()};
+   const {data,error}=await sb.from("secret_messages").select("ciphertext,expires_at").eq("id",id).single();
+   if(error||!data) throw Error("NOT_FOUND");
+   if(data.expires_at && new Date(data.expires_at).getTime()<=Date.now()){jlxFX.error();e.textContent="> MESSAGE EXPIRED — ACCESS BLOCKED";return}
+   const payload=await decryptMessage(key,data.ciphertext);
+   jlxFX.success();jlxFX.flash();jlxFX.toast("ACCESS GRANTED");e.style.color="#9cff00";e.textContent="> PASSWORD ACCEPTED — OPENING...";
+   sessionStorage.setItem("pendingPayload",JSON.stringify(payload));
+   setTimeout(()=>location.href="message.html?id="+encodeURIComponent(id),450);
+ }catch(err){console.error(err);tone(150,.15);e.style.color="#ff5555";e.textContent="> ACCESS DENIED — WRONG PASSWORD, EXPIRED, OR INVALID LINK"}
+}
+document.getElementById("unlock").onclick=unlock;document.getElementById("key").onkeydown=e=>{if(e.key==="Enter")unlock()};
 </script>
 
 <script>

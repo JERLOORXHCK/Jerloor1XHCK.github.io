@@ -46,61 +46,44 @@ button{width:100%;margin-top:12px;padding:14px;border:0;border-radius:11px;backg
 <div id="copied" style="text-align:center;color:#9cff00;font:11px monospace;margin-top:10px;min-height:16px"></div>
 </section>
 <p class="warning">WhatsApp Share sends the link only. For better privacy, send the password separately.</p><p class="warning">AES-256-GCM + PBKDF2-SHA-256 (250,000 iterations). The password is NOT included in the share link. Send the link and password separately. Anyone with the link alone cannot decrypt the message.</p>
-<p class="warning">Static-site limitation: expiration is enforced by the recipient's browser clock. For server-enforced deletion that cannot be bypassed by changing the clock, use a backend.</p>
+<p class="warning">Supabase enforces expiration at the database level. The password is never stored or sent to Supabase.</p>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script>
-function b64u(a){let s=btoa(String.fromCharCode(...a));return s.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+function b64u(a){let s=btoa(String.fromCharCode(...a));return s.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"")}
 function randomKey(){const a=new Uint8Array(18);crypto.getRandomValues(a);return b64u(a)}
 async function encrypt(obj,password){
  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
  const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt"]);
  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(JSON.stringify(obj))));
- const all=new Uint8Array(28+ct.length);all.set(salt,0);all.set(iv,16);all.set(ct,28);return b64u(all)
+ const all=new Uint8Array(28+ct.length);all.set(salt,0);all.set(iv,16);all.set(ct,28);return b64u(all);
 }
 async function make(){
  const m=document.getElementById("msg").value.trim();let k=document.getElementById("key").value.trim();
- if(!m){alert("Write a message first.");return}if(!k)k=randomKey();
+ if(!m){alert("Write a message first.");return} if(!k)k=randomKey();
  const mins=Number(document.getElementById("expiry").value);
  const expiresAt=mins===0?null:new Date(Date.now()+mins*60000).toISOString();
- const btn=document.getElementById("gen");btn.disabled=true;btn.textContent="ENCRYPTING...";
+ const btn=document.getElementById("gen");btn.disabled=true;btn.textContent="ENCRYPTING & SAVING...";
  try{
-  jlxFX.click();
-  const payload=await encrypt({message:m,createdAt:Date.now()},k);
-  const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
-  const {data,error}=await client.from("secret_messages")
-    .insert({ciphertext:payload,expires_at:expiresAt})
-    .select("id,expires_at")
-    .single();
-  if(error) throw error;
-  const link=location.origin+location.pathname.replace(/create\.html$/,"index.html")+"#id="+encodeURIComponent(data.id);
-  document.getElementById("outkey").textContent=k;
-  document.getElementById("outlink").textContent=link;
-  document.getElementById("outexp").textContent=expiresAt?new Date(expiresAt).toLocaleString():"Never";
-  document.getElementById("result").style.display="block";
-  btn.textContent="✓ ENCRYPTED & STORED";jlxFX.success();jlxFX.flash();jlxFX.toast("MESSAGE STORED SECURELY");
- }catch(e){
-  console.error(e);jlxFX.error();jlxFX.glitch();
-  btn.textContent="ERROR — CHECK SUPABASE";
-  alert("Could not save the message. Make sure supabase.sql has been run and the URL/key are correct.");
- }finally{btn.disabled=false}
+   const payload=await encrypt({message:m,createdAt:Date.now()},k);
+   const {data,error}=await sb.from("secret_messages").insert({ciphertext:payload,expires_at:expiresAt}).select("id").single();
+   if(error) throw error;
+   const link=location.origin+location.pathname.replace(/create\.html$/,"index.html")+"?id="+encodeURIComponent(data.id);
+   document.getElementById("outkey").textContent=k;
+   document.getElementById("outlink").textContent=link;
+   document.getElementById("outexp").textContent=expiresAt?new Date(expiresAt).toLocaleString():"Never";
+   document.getElementById("result").style.display="block";btn.textContent="✓ SAVED & ENCRYPTED";jlxFX.success();jlxFX.flash();jlxFX.toast("MESSAGE SAVED SECURELY");
+ }catch(e){console.error(e);jlxFX.error();btn.textContent="ERROR — CHECK SUPABASE SETUP";alert("Could not save the message. Check supabase-config.js and run supabase.sql in Supabase SQL Editor.");}
+ finally{btn.disabled=false}
 }
 document.getElementById("gen").onclick=make;
-async function cp(id,label){
- const text=document.getElementById(id).textContent;
- try{await navigator.clipboard.writeText(text);document.getElementById("copied").textContent="✓ "+label+" copied to clipboard";}
- catch{prompt("Copy this "+label+":",text)}
-}
+async function cp(id,label){const text=document.getElementById(id).textContent;try{await navigator.clipboard.writeText(text);document.getElementById("copied").textContent="✓ "+label+" copied to clipboard"}catch{prompt("Copy this "+label+":",text)}}
 document.getElementById("copyLink").onclick=()=>cp("outlink","Share link");
 document.getElementById("copyKey").onclick=()=>cp("outkey","Password");
-document.getElementById("waShare").onclick=()=>{
- const link=document.getElementById("outlink").textContent;
- if(!link){document.getElementById("copied").textContent="Create the encrypted message first.";return}
- const text="🔐 JERLOORXHCK SECRET MESSAGE\n\nOpen this link:\n"+link+"\n\n🔑 Password: Send separately for extra privacy.";
- window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank");
-};
+document.getElementById("waShare").onclick=()=>{const link=document.getElementById("outlink").textContent;if(!link){document.getElementById("copied").textContent="Create the encrypted message first.";return}window.open("https://wa.me/2347070783758?text="+encodeURIComponent("🔐 JERLOORXHCK SECRET MESSAGE\n\nOpen this link:\n"+link+"\n\n🔑 I will send the password separately."),"_blank")};
 </script>
 <script>
 (function(){

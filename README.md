@@ -1,57 +1,15 @@
-# JERLOORXHCK Secret Message — Link + Password Edition
+# JERLOORXHCK + Supabase
+
+## Setup
+1. Create a Supabase project.
+2. Open SQL Editor and run `supabase.sql`.
+3. Copy your Project URL and anon/publishable key into `supabase-config.js`.
+4. Upload all files to GitHub Pages.
 
 ## Flow
-1. Open `create.html`.
-2. Write your complete message.
-3. Choose a password (or let the generator create one).
-4. Choose an expiration time.
-5. Generate the share link.
-6. Send the **share link** and **password separately**.
-7. The recipient opens the link, enters the password, and the complete message opens.
+Create message → browser AES-256-GCM encrypts it → encrypted ciphertext is stored in Supabase → link contains only a random message UUID → recipient enters password → browser fetches ciphertext and decrypts locally → message displays.
 
-## Security
-The share link contains only the encrypted payload. The password is never included in the URL, including query parameters or hash fragments. AES-256-GCM protects the message and PBKDF2-SHA-256 derives the encryption key with 250,000 iterations.
+The password is never stored in Supabase and is never put in the URL.
 
-## Expiry
-The encrypted payload contains an expiration timestamp. The browser blocks display after expiry and shows a countdown while the message is open.
-
-Because GitHub Pages is static, expiration is client-side and depends on the recipient's device clock. True server-enforced deletion requires a backend.
-
-Do not use this for OTPs, banking details, passwords, or other highly sensitive information.
-
-
-## Pro Edition additions
-- Copy Share Link button
-- Copy Password button
-- WhatsApp Share button that shares the link without exposing the password
-- WhatsApp contact button on the message page
-
-For best privacy, send the password separately from the share link.
-
-
-## Password Generator
-The Create page now includes a **GENERATE** button that creates a cryptographically random 24-character password using the browser's `crypto.getRandomValues()` API. The generated password is placed in the password field and is used for the AES-256-GCM encryption.
-
-
-## Password Strength Meter
-The Create page now evaluates the password as **Weak, Medium, Strong, or Very Strong** based on length, character variety, and repeated-character patterns. The meter updates while typing and after using Generate.
-
-
-## Matrix/Hacker FX
-- CRT scan/noise overlay and vignette
-- Glitch pulses
-- Access-granted flash and toast
-- Hacker-style UI sound effects for clicks, typing, boot, success and error
-- Password generation and encryption completion sounds
-
-Audio starts after browser interaction where required by mobile autoplay policies.
-
-## WhatsApp Contact
-The message page contact button opens the owner's WhatsApp number: +234 707 078 3758.
-
-
-## Supabase backend
-Run `supabase.sql` in the Supabase SQL Editor before publishing the site.
-The website uses the Supabase publishable key in `supabase-config.js`.
-The password is never stored in Supabase and never appears in the URL.
-Only encrypted ciphertext is stored in the `secret_messages` table.
+## Important
+Because this is a public static site, anyone can submit records unless you add server-side rate limiting/authentication. The ciphertext remains encrypted, but users should choose strong passwords.
