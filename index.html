@@ -56,7 +56,7 @@ function tone(freq,dur,delay=0){setTimeout(()=>{const A=window.AudioContext||win
 function b64u(s){return s.replace(/-/g,"+").replace(/_/g,"/")+ "=".repeat((4-s.length%4)%4)}
 function ub64(s){const bin=atob(b64u(s));return Uint8Array.from(bin,c=>c.charCodeAt(0))}
 async function decryptMessage(password){
- const raw=location.hash.startsWith("#data=")?location.hash.slice(6).split("&key=")[0]:"";
+ const raw=location.hash.startsWith("#data=")?location.hash.slice(6).split("&")[0]:"";
  if(!raw)throw Error("NO_PAYLOAD");
  const bytes=ub64(raw),salt=bytes.slice(0,16),iv=bytes.slice(16,28),ct=bytes.slice(28);
  const base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
